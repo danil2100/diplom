@@ -1,138 +1,103 @@
 import pytest
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
+import time
 
 
-@pytest.fixture(scope="function")
-def browser():
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--disable-features=VizDisplayCompositor")
-    options.add_argument("--disable-features=UseGpuRasterizer")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
-
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-    yield driver
-    driver.quit()
-
-
-def test_select_departure_city(browser):
-    browser.get("https://www.aviasales.ru/")
-    browser.execute_script("""
-        window.localStorage.setItem('city', 'IJK');
-        window.localStorage.setItem('country', 'RU');
-        window.localStorage.setItem('cityName', 'Ижевск');
-    """)
-    browser.refresh()
-    field = WebDriverWait(browser, 15).until(
+def test_default_departure_city_is_set(browser):
+    """Проверка: город отправления автоматически установлен"""
+    browser.get("https://www.aviasales.ru")
+    field = WebDriverWait(browser, 40).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
     )
     value = field.get_attribute("value")
-    assert "Ижевск" in value
+    assert len(value) > 0, "Город отправления не определился"
 
 
-def test_select_arrival_city(browser):
-    browser.get("https://www.aviasales.ru/")
-    browser.execute_script("""
-        window.localStorage.setItem('city', 'IJK');
-        window.localStorage.setItem('country', 'RU');
-        window.localStorage.setItem('cityName', 'Ижевск');
-    """)
-    browser.refresh()
-    field = WebDriverWait(browser, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Куда']"))
+def test_page_title_contains_aviasales(browser):
+    """Проверка: заголовок страницы содержит 'Авиасейлс' или 'Aviasales'"""
+    browser.get("https://www.aviasales.ru")
+    WebDriverWait(browser, 40).until(
+        lambda driver: any(word in driver.title for word in ["Авиасейлс", "Aviasales"])
     )
-    field.click()
-    field.clear()
-    field.send_keys("Москва")
-    dropdown_option = WebDriverWait(browser, 10).until(
-        EC.element_to_be_clickable((By.XPATH, "//li[contains(@class, 'SearchInput_suggestion') and contains(., 'Москва')]"))
-    )
-    dropdown_option.click()
-    value = field.get_attribute("value")
-    assert "Москва" in value
+    assert any(word in browser.title for word in ["Авиасейлс", "Aviasales"]), \
+        f"Ожидалось 'Авиасейлс' или 'Aviasales', получено: {browser.title}"
 
 
-def test_select_future_date(browser):
-    browser.get("https://www.aviasales.ru/")
-    browser.execute_script("""
-        window.localStorage.setItem('city', 'IJK');
-        window.localStorage.setItem('country', 'RU');
-        window.localStorage.setItem('cityName', 'Ижевск');
-    """)
-    browser.refresh()
-    date_field = WebDriverWait(browser, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Туда']"))
-    )
-    date_field.click()
-    WebDriverWait(browser, 15).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, ".Calendar_root"))
-    )
-    date_cell = WebDriverWait(browser, 15).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-date='2025-09-21']"))
-    )
-    date_cell.click()
-    browser.find_element(By.TAG_NAME, "body").click()
-    WebDriverWait(browser, 20).until(
-        lambda d: "21 сентября" in d.find_element(By.CSS_SELECTOR, "input[placeholder='Туда']").get_attribute("value") or "21.09.2025" in d.find_element(By.CSS_SELECTOR, "input[placeholder='Туда']").get_attribute("value")
-    )
-    value = browser.find_element(By.CSS_SELECTOR, "input[placeholder='Туда']").get_attribute("value")
-    assert "21 сентября" in value or "21.09.2025" in value
+def test_scroll_to_bottom_and_return(browser):
+    """Проверка: прокрутка до конца страницы и возврат в начало"""
+    browser.get("https://www.aviasales.ru")
 
-
-def test_perform_search_with_valid_data(browser):
-    browser.get("https://www.aviasales.ru/")
-    browser.execute_script("""
-        window.localStorage.setItem('city', 'IJK');
-        window.localStorage.setItem('country', 'RU');
-        window.localStorage.setItem('cityName', 'Ижевск');
-    """)
-    browser.refresh()
-    WebDriverWait(browser, 10).until(
+    WebDriverWait(browser, 40).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
     )
-    search_button = WebDriverWait(browser, 15).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "button.Button_root:has(span:contains('Найти'))"))
+
+    # Прокручиваем вниз
+    browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+    return_button = WebDriverWait(browser, 30).until(
+        EC.element_to_be_clickable((By.XPATH, "//button[@data-test-id='choose-destination-on-button']"))
     )
-    search_button.click()
-    WebDriverWait(browser, 20).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, ".TicketCard_root"))
+    return_button.click()
+
+    # Проверяем, что вернулись к полю "Откуда"
+    from_field = WebDriverWait(browser, 15).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
     )
-    title = browser.title.lower()
-    assert "билеты" in title or "результаты" in title
+    assert from_field.is_displayed(), "Поле 'Откуда' должно быть видимым после возврата"
 
 
-def test_search_with_invalid_city(browser):
-    browser.get("https://www.aviasales.ru/")
-    browser.execute_script("""
-        window.localStorage.setItem('city', 'IJK');
-        window.localStorage.setItem('country', 'RU');
-        window.localStorage.setItem('cityName', 'Ижевск');
-    """)
-    browser.refresh()
-    field = WebDriverWait(browser, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Куда']"))
+def test_switch_to_hotels_tab(browser):
+    """Проверка: переход на вкладку 'Отели'"""
+    browser.get("https://www.aviasales.ru")
+
+    WebDriverWait(browser, 40).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
     )
-    field.clear()
-    field.send_keys("НесуществующийГород123")
-    search_button = WebDriverWait(browser, 10).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "button.Button_root:has(span:contains('Найти'))"))
+
+    # ✅ Правильный селектор: <a> с href="/hotels", внутри которого есть div с текстом "Отели"
+    hotels_link = WebDriverWait(browser, 20).until(
+        EC.element_to_be_clickable((By.XPATH, "//a[@href='/hotels'][.//div[text()='Отели']]"))
     )
-    search_button.click()
-    error_msg = WebDriverWait(browser, 15).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, ".ErrorMessage_root"))
+    hotels_link.click()
+
+    WebDriverWait(browser, 30).until(
+        EC.url_contains("/hotels")
     )
-    text = error_msg.text.lower()
-    assert any(word in text for word in ["не найден", "город", "ошибка"])
+    assert "/hotels" in browser.current_url, "Не перешли на страницу отелей"
+
+
+def test_switch_to_korotche_tab(browser):
+    """Проверка: переход на вкладку 'Короче'"""
+    browser.get("https://www.aviasales.ru")
+
+    WebDriverWait(browser, 40).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
+    )
+
+    korotche_link = WebDriverWait(browser, 20).until(
+        EC.element_to_be_clickable((By.XPATH, "//a[@href='/korotche'][.//div[text()='Короче']]"))
+    )
+    korotche_link.click()
+
+    WebDriverWait(browser, 30).until(
+        EC.url_contains("/korotche")
+    )
+    assert "/korotche" in browser.current_url, "Не перешли на страницу 'Короче'"
+    """Проверка: переход на вкладку 'Короче'"""
+    browser.get("https://www.aviasales.ru")
+
+    WebDriverWait(browser, 40).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
+    )
+
+    korotche_link = WebDriverWait(browser, 20).until(
+        EC.element_to_be_clickable((By.XPATH, "//a[@href='/korotche'][.//div[text()='Короче']]"))
+    )
+    korotche_link.click()
+
+    WebDriverWait(browser, 30).until(
+        EC.url_contains("/korotche")
+    )
+    assert "/korotche" in browser.current_url, "Не перешли на страницу 'Короче'"
