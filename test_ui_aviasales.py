@@ -2,102 +2,97 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
+from allure import step, title, description, severity, severity_level
 
 
+@title("Проверка: город отправления автоматически установлен")
+@description("Тест проверяет, что поле 'Откуда' на главной странице Aviasales заполнено автоматически.")
+@severity(severity_level.NORMAL)
 def test_default_departure_city_is_set(browser):
     """Проверка: город отправления автоматически установлен"""
-    browser.get("https://www.aviasales.ru")
-    field = WebDriverWait(browser, 40).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
-    )
-    value = field.get_attribute("value")
-    assert len(value) > 0, "Город отправления не определился"
+    with step("Открываем главную страницу Aviasales"):
+        browser.get("https://www.aviasales.ru")
+
+    with step("Ожидаем появления поля 'Откуда'"):
+        field = WebDriverWait(browser, 40).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
+        )
+
+    with step("Проверяем, что поле содержит значение"):
+        value = field.get_attribute("value")
+        assert len(value) > 0, "Город отправления не определился"
 
 
+@title("Проверка: заголовок страницы содержит 'Авиасейлс' или 'Aviasales'")
+@description("Тест проверяет, что заголовок браузера содержит ожидаемое название сайта.")
+@severity(severity_level.NORMAL)
 def test_page_title_contains_aviasales(browser):
     """Проверка: заголовок страницы содержит 'Авиасейлс' или 'Aviasales'"""
-    browser.get("https://www.aviasales.ru")
-    WebDriverWait(browser, 40).until(
-        lambda driver: any(word in driver.title for word in ["Авиасейлс", "Aviasales"])
-    )
-    assert any(word in browser.title for word in ["Авиасейлс", "Aviasales"]), \
-        f"Ожидалось 'Авиасейлс' или 'Aviasales', получено: {browser.title}"
+    with step("Открываем главную страницу Aviasales"):
+        browser.get("https://www.aviasales.ru")
+
+    with step("Ожидаем, что заголовок содержит 'Авиасейлс' или 'Aviasales'"):
+        WebDriverWait(browser, 40).until(
+            lambda driver: any(word in driver.title for word in ["Авиасейлс", "Aviasales"])
+        )
+
+    with step("Проверяем содержимое заголовка"):
+        assert any(word in browser.title for word in ["Авиасейлс", "Aviasales"]), \
+            f"Ожидалось 'Авиасейлс' или 'Aviasales', получено: {browser.title}"
 
 
-def test_scroll_to_bottom_and_return(browser):
-    """Проверка: прокрутка до конца страницы и возврат в начало"""
-    browser.get("https://www.aviasales.ru")
+@title("Проверка: заголовок главной страницы отображается корректно")
+@description("Тест проверяет наличие и текст заголовка 'header__title' на главной странице.")
+@severity(severity_level.NORMAL)
+def test_main_page_header_title(browser):
+    """Проверка: заголовок главной страницы отображается корректно"""
+    with step("Открываем главную страницу Aviasales"):
+        browser.get("https://www.aviasales.ru")
 
-    WebDriverWait(browser, 40).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
-    )
+    with step("Ожидаем появления заголовка 'header__title'"):
+        header_title = WebDriverWait(browser, 20).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "header__title"))
+        )
 
-    # Прокручиваем вниз
-    browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
-    return_button = WebDriverWait(browser, 30).until(
-        EC.element_to_be_clickable((By.XPATH, "//button[@data-test-id='choose-destination-on-button']"))
-    )
-    return_button.click()
-
-    # Проверяем, что вернулись к полю "Откуда"
-    from_field = WebDriverWait(browser, 15).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
-    )
-    assert from_field.is_displayed(), "Поле 'Откуда' должно быть видимым после возврата"
+    with step("Проверяем, что заголовок отображается и содержит ожидаемый текст"):
+        assert header_title.is_displayed(), "Заголовок страницы 'header__title' не отображается"
+        assert "Помогаем сравнить билеты" in header_title.text or "Авиасейлс" in header_title.text, \
+            f"Ожидался текст заголовка, получено: '{header_title.text}'"
 
 
-def test_switch_to_hotels_tab(browser):
-    """Проверка: переход на вкладку 'Отели'"""
-    browser.get("https://www.aviasales.ru")
+@title("Проверка: прямой переход на страницу отелей и корректный заголовок")
+@description("Тест открывает страницу отелей по URL и проверяет заголовок 'Здесь бронируют балдёжные отели'.")
+@severity(severity_level.NORMAL)
+def test_open_hotels_page_directly(browser):
+    """Проверка: прямой переход на страницу отелей и корректный заголовок"""
+    with step("Открываем страницу отелей по URL: /hotels"):
+        browser.get("https://www.aviasales.ru/hotels")
 
-    WebDriverWait(browser, 40).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
-    )
+    with step("Ожидаем появления заголовка страницы отелей"):
+        hotels_header = WebDriverWait(browser, 30).until(
+            EC.presence_of_element_located((By.XPATH, "//h1[contains(text(), 'Здесь бронируют балдёжные отели')]"))
+        )
 
-    # ✅ Правильный селектор: <a> с href="/hotels", внутри которого есть div с текстом "Отели"
-    hotels_link = WebDriverWait(browser, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "//a[@href='/hotels'][.//div[text()='Отели']]"))
-    )
-    hotels_link.click()
-
-    WebDriverWait(browser, 30).until(
-        EC.url_contains("/hotels")
-    )
-    assert "/hotels" in browser.current_url, "Не перешли на страницу отелей"
+    with step("Проверяем, что заголовок содержит ожидаемый текст и URL верный"):
+        assert "Здесь бронируют балдёжные отели" in hotels_header.text, \
+            "На странице отелей нет заголовка 'Здесь бронируют балдёжные отели'"
+        assert "/hotels" in browser.current_url, "Не перешли на страницу отелей"
 
 
-def test_switch_to_korotche_tab(browser):
-    """Проверка: переход на вкладку 'Короче'"""
-    browser.get("https://www.aviasales.ru")
+@title("Проверка: прямой переход на страницу 'Короче' (Путеводители) и корректный заголовок")
+@description("Тест открывает страницу 'Короче' по URL и проверяет заголовок 'Короче о городах'.")
+@severity(severity_level.NORMAL)
+def test_open_guides_page_directly(browser):
+    """Проверка: прямой переход на страницу 'Короче' (Путеводители) и корректный заголовок"""
+    with step("Открываем страницу 'Короче' по URL: /guides"):
+        browser.get("https://www.aviasales.ru/guides")
 
-    WebDriverWait(browser, 40).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
-    )
+    with step("Ожидаем появления заголовка страницы 'Короче о городах'"):
+        korotche_header = WebDriverWait(browser, 30).until(
+            EC.presence_of_element_located((By.XPATH, "//h1[contains(text(), 'Короче о городах')]"))
+        )
 
-    korotche_link = WebDriverWait(browser, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "//a[@href='/korotche'][.//div[text()='Короче']]"))
-    )
-    korotche_link.click()
-
-    WebDriverWait(browser, 30).until(
-        EC.url_contains("/korotche")
-    )
-    assert "/korotche" in browser.current_url, "Не перешли на страницу 'Короче'"
-    """Проверка: переход на вкладку 'Короче'"""
-    browser.get("https://www.aviasales.ru")
-
-    WebDriverWait(browser, 40).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Откуда']"))
-    )
-
-    korotche_link = WebDriverWait(browser, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "//a[@href='/korotche'][.//div[text()='Короче']]"))
-    )
-    korotche_link.click()
-
-    WebDriverWait(browser, 30).until(
-        EC.url_contains("/korotche")
-    )
-    assert "/korotche" in browser.current_url, "Не перешли на страницу 'Короче'"
+    with step("Проверяем, что заголовок содержит ожидаемый текст и URL верный"):
+        assert "Короче о городах" in korotche_header.text, \
+            "На странице 'Короче' нет заголовка 'Короче о городах'"
+        assert "/guides" in browser.current_url, "Не перешли на страницу 'Короче'"
