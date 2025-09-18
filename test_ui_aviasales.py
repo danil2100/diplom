@@ -56,7 +56,7 @@ def test_main_page_header_title(browser):
 
     with step("Проверяем, что заголовок отображается и содержит ожидаемый текст"):
         assert header_title.is_displayed(), "Заголовок страницы 'header__title' не отображается"
-        assert "Помогаем сравнить билеты" in header_title.text or "Авиасейлс" in header_title.text, \
+        assert "Тут покупают дешёвые авиабилеты" in header_title.text or "Авиасейлс" in header_title.text, \
             f"Ожидался текст заголовка, получено: '{header_title.text}'"
 
 
